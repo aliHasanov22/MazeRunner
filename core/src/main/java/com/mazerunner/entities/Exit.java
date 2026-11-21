@@ -16,6 +16,7 @@ public final class Exit extends GameObject {
     /** Blocks movement until the player has at least one key. */
     @Override
     public boolean blocksMovement(boolean hasKey) {
-        return !hasKey;
+        return !hasKey;  
+        
     }
 }
