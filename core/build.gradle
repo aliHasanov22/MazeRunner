@@ -12,3 +12,13 @@ dependencies {
 jar {
   duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+
+test {
+  failOnNoDiscoveredTests = false
+}
+
+tasks.register('coreGameplaySmokeTest', JavaExec) {
+  dependsOn testClasses
+  mainClass = 'com.mazerunner.CoreGameplaySelfTest'
+  classpath = sourceSets.test.runtimeClasspath
+}
