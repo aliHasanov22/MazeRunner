@@ -125,10 +125,7 @@ classDiagram
       +getTileAt(int x, int y) GameObject
       +getEnemies() List~Enemy~
       +findEntry() Entry
-      +getExits() List~Exit~
       +findNearestExit(GridPosition from) Exit
-      +validate() void
-      +isWalkable(int x, int y, boolean hasKey) boolean
       +resetEnemies() void
     }
 
@@ -228,15 +225,10 @@ classDiagram
 
   namespace events {
     class EventBus {
-      -Map~Class, CopyOnWriteArrayList~ listeners
-      +subscribe(Class~E~ eventType, Consumer~E~ listener) Subscription
+      -Map~Class, List~ listeners
+      +subscribe(Class~E~ eventType, Consumer~E~ listener) void
+      +unsubscribe(Class~E~ eventType, Consumer~E~ listener) void
       +publish(Object event) void
-      +clear() void
-    }
-
-    class Subscription {
-      <<interface>>
-      +close() void
     }
 
     class GameEvent {
@@ -331,7 +323,6 @@ classDiagram
   Collectable <|.. ExtraLife
   Collectable <|.. PowerUp
 
-  EventBus +-- Subscription
   GameEvent <|.. LifeLostEvent
   GameEvent <|.. KeyCollectedEvent
   GameEvent <|.. ScoreChangedEvent
@@ -427,9 +418,6 @@ GridMap map = new GridMap(width, height);
 // For each cell from the .properties map file:
 map.setTile(factory.create(typeId, x, y));
 
-// Check map rules before starting the game:
-map.validate();
-
 GameWorld world = new GameWorld(map);
 world.addCollectable(new Key(keyX, keyY));
 world.addCollectable(new ExtraLife(lifeX, lifeY));
@@ -437,13 +425,11 @@ world.addCollectable(new PowerUp(boostX, boostY, PowerUpType.SPEED_BOOST, 5.0f))
 world.addCollectable(new PowerUp(shieldX, shieldY, PowerUpType.SHIELD, 5.0f));
 ```
 
-Heads-up: `resetForNewGame()` restores collectables using `copyCollectable(...)`, which currently supports `Key`, `ExtraLife`, and `PowerUp`. If we add a new `Collectable` class later, we should add it there too.
-
 ### Obstacles & Enemy AI (Member 3)
 
 - `Enemy.update(float deltaSeconds, GameWorld world)` currently runs a basic 4-direction patrol (`RIGHT -> DOWN -> LEFT -> UP`, `0.8s` per step) as a placeholder for the full Patrol / Attack / Evade / Retreat state machine.
 - Use `world.canEnemyEnter(nextPos, this)` before moving an enemy so it respects walls, map bounds, and doesn't overlap other enemies.
-- Useful helpers already available: `world.getPlayer().getPosition()`, `world.getPlayer().hasShield()`, `world.getMap().isWalkable(x, y, hasKey)`, `world.getMap().findNearestExit(from)`, `world.getMap().getEnemies()`.
+- Useful helpers already available: `world.getPlayer().getPosition()`, `world.getPlayer().hasShield()`, `world.getMap().getTileAt(x, y)`, `world.getMap().findNearestExit(from)`, `world.getMap().getEnemies()`.
 
 ### Graphics, Audio, Screens & HUD (Members 4 & 5)
 
@@ -452,17 +438,14 @@ Core gameplay never calls UI or audio classes directly. Instead, subscribe to ev
 ```java
 EventBus bus = world.getEventBus();
 
-EventBus.Subscription scoreSub = bus.subscribe(GameEvent.ScoreChangedEvent.class, event -> {
+Consumer<GameEvent.ScoreChangedEvent> onScore = event -> {
     // event.newScore(), event.pointsAdded(), event.reason()
-});
+};
 
-EventBus.Subscription hitSub = bus.subscribe(GameEvent.LifeLostEvent.class, event -> {
-    // play hit sound / flash screen
-});
+bus.subscribe(GameEvent.ScoreChangedEvent.class, onScore);
 
-// Remember to unsubscribe when closing a screen:
-scoreSub.close();
-hitSub.close();
+// Unsubscribe when closing a screen:
+bus.unsubscribe(GameEvent.ScoreChangedEvent.class, onScore);
 ```
 
 Events published by `GameWorld` and collectables (`GameEvent.*`):
