@@ -4,8 +4,7 @@ import com.mazerunner.core.GameWorld;
 import com.mazerunner.map.GridPosition;
 
 /**
- * Base class for all objects placed on the maze grid.
- * Stores a unique ID and grid coordinates (x, y).
+ * Base class for every object on the maze grid. Stores a unique ID and (x, y).
  *
  * @author Ali Hasanov
  */
@@ -17,12 +16,7 @@ public abstract class GameObject implements Collidable {
     private int x;
     private int y;
 
-    /**
-     * Creates a game object at the given grid cell.
-     *
-     * @param x horizontal grid coordinate
-     * @param y vertical grid coordinate
-     */
+    /** Creates an object at grid cell (x, y). */
     protected GameObject(int x, int y) {
         this.id = nextId++;
         this.x = x;
@@ -34,40 +28,39 @@ public abstract class GameObject implements Collidable {
         return id;
     }
 
-    /** Returns the horizontal grid coordinate. */
+    /** Returns the x grid coordinate. */
     public int getX() {
         return x;
     }
 
-    /** Returns the vertical grid coordinate. */
+    /** Returns the y grid coordinate. */
     public int getY() {
         return y;
     }
 
-    /** Returns the current grid position as a GridPosition object. */
+    /** Returns the position as a GridPosition. */
     public GridPosition getPosition() {
         return new GridPosition(x, y);
     }
 
-    /** Moves this object to a new grid cell. */
+    /** Moves this object to another cell. */
     protected void setPosition(int newX, int newY) {
-        this.x = newX;
-        this.y = newY;
+        x = newX;
+        y = newY;
     }
 
-    /** Returns true if this tile blocks movement. */
+    /** Returns true if this tile blocks movement. Nothing blocks by default. */
     public boolean blocksMovement(boolean hasKey) {
         return false;
     }
 
-    /** Updates this object for one frame. Static objects do nothing by default. */
+    /** Called every frame. Static objects do nothing. */
     public void update(float deltaSeconds, GameWorld world) {
-        // overridden by moving objects like Enemy
     }
 
-    /** Checks if this object is on the same grid cell as another object. */
+    /** Returns true if both objects are on the same cell. */
     @Override
     public boolean collidesWith(GameObject other) {
-        return other != null && this.x == other.x && this.y == other.y;
+        return other != null && x == other.x && y == other.y;
     }
 }

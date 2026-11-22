@@ -3,17 +3,14 @@ package com.mazerunner.map;
 import com.mazerunner.input.Direction;
 
 /**
- * Represents a grid cell coordinate (x, y) in the maze.
+ * A grid cell coordinate (x, y).
  *
  * @author Ali Hasanov
  */
 public record GridPosition(int x, int y) {
 
-    /** Returns the neighbouring grid cell one step in the given direction. */
+    /** Returns the neighbouring cell in the given direction. */
     public GridPosition move(Direction direction) {
-        if (direction == null) {
-            throw new IllegalArgumentException("Direction cannot be null");
-        }
         return new GridPosition(x + direction.getDx(), y + direction.getDy());
     }
 }

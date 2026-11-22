@@ -4,8 +4,7 @@ import com.mazerunner.input.Direction;
 import com.mazerunner.map.GridPosition;
 
 /**
- * Represents the player character, including lives, keys, movement speed,
- * and active power-up timers.
+ * The player character: lives, keys, movement speed and power-up timers.
  *
  * @author Ali Hasanov
  */
@@ -19,24 +18,16 @@ public final class Player extends GameObject {
 
     private int lives;
     private int keyCount;
-    private Direction requestedDirection;
+    private Direction direction;
     private boolean sprinting;
     private float movementProgress;
     private float speedBoostTime;
     private float shieldTime;
 
-    /** Creates a player at (x, y) with the default 3 lives. */
-    public Player(int x, int y) {
-        this(x, y, DEFAULT_LIVES);
-    }
-
-    /** Creates a player at (x, y) with the given starting lives (1 to 5). */
-    public Player(int x, int y, int startingLives) {
+    /** Creates a player at (x, y) with the given number of lives. */
+    public Player(int x, int y, int lives) {
         super(x, y);
-        if (startingLives < 1 || startingLives > MAX_LIVES) {
-            throw new IllegalArgumentException("Starting lives must be between 1 and " + MAX_LIVES);
-        }
-        this.lives = startingLives;
+        this.lives = lives;
     }
 
     /** Returns how many lives the player has left. */
@@ -49,14 +40,14 @@ public final class Player extends GameObject {
         return keyCount;
     }
 
-    /** Returns true if the player has collected at least one key. */
+    /** Returns true if the player has at least one key. */
     public boolean hasKey() {
         return keyCount > 0;
     }
 
-    /** Returns true while the shield power-up timer is active. */
+    /** Returns true while the shield is active. */
     public boolean hasShield() {
-        return shieldTime > 0.0f;
+        return shieldTime > 0;
     }
 
     /** Returns the remaining shield time in seconds. */
@@ -64,70 +55,61 @@ public final class Player extends GameObject {
         return shieldTime;
     }
 
-    /** Returns the remaining speed-boost time in seconds. */
+    /** Returns the remaining speed boost time in seconds. */
     public float getSpeedBoostTime() {
         return speedBoostTime;
     }
 
-    /** Sets the held movement direction and sprint state. Passing null stops movement. */
+    /** Returns the direction the player is holding, or null if not moving. */
+    public Direction getDirection() {
+        return direction;
+    }
+
+    /** Sets the held direction and sprint state. Null stops the player. */
     public void setMovement(Direction direction, boolean sprint) {
-        this.requestedDirection = direction;
+        this.direction = direction;
         this.sprinting = sprint && direction != null;
         if (direction == null) {
-            this.movementProgress = 0.0f;
+            movementProgress = 0;
         }
     }
 
-    /** Returns the direction currently held by the player, or null if stopped. */
-    public Direction getRequestedDirection() {
-        return requestedDirection;
-    }
-
-    /** Adds frame time to the player's movement progress based on current speed. */
+    /** Adds frame time to the movement progress. One full point means one cell. */
     public void addMovementTime(float deltaSeconds) {
-        if (requestedDirection != null) {
-            float speed = sprinting ? SPRINT_SPEED : NORMAL_SPEED;
-            if (speedBoostTime > 0.0f) {
-                speed = speed * SPEED_BOOST_MULTIPLIER;
-            }
-            movementProgress += deltaSeconds * speed;
+        if (direction == null) {
+            return;
         }
+        float speed = sprinting ? SPRINT_SPEED : NORMAL_SPEED;
+        if (speedBoostTime > 0) {
+            speed *= SPEED_BOOST_MULTIPLIER;
+        }
+        movementProgress += deltaSeconds * speed;
     }
 
-    /** Returns true when enough movement progress has built up to step one grid cell. */
+    /** Returns true when the player has built up enough progress to move one cell. */
     public boolean canMoveOneCell() {
-        return requestedDirection != null && movementProgress >= 1.0f;
+        return direction != null && movementProgress >= 1;
     }
 
-    /** Subtracts one cell worth of movement progress after a step. */
-    public void consumeMovementStep() {
-        movementProgress -= 1.0f;
-        if (movementProgress < 0.0f) {
-            movementProgress = 0.0f;
-        }
-    }
-
-    /** Resets movement progress when the player is blocked by a wall or locked exit. */
-    public void clearMovementTime() {
-        movementProgress = 0.0f;
-    }
-
-    /** Moves the player to the given grid cell. */
-    public void moveTo(GridPosition position) {
+    /** Moves the player one cell and uses up one cell of movement progress. */
+    public void stepTo(GridPosition position) {
         setPosition(position.x(), position.y());
+        movementProgress -= 1;
     }
 
-    /** Removes up to the given number of lives and returns how many were actually removed. */
+    /** Throws away leftover movement progress (used when blocked by a wall). */
+    public void clearMovementTime() {
+        movementProgress = 0;
+    }
+
+    /** Removes lives and returns how many were actually removed. */
     public int loseLives(int amount) {
-        if (amount <= 0 || lives <= 0) {
-            return 0;
-        }
         int removed = Math.min(amount, lives);
         lives -= removed;
         return removed;
     }
 
-    /** Adds 1 life if below MAX_LIVES (5), returning true if a life was added. */
+    /** Adds one life if below MAX_LIVES. Returns true if a life was added. */
     public boolean addLife() {
         if (lives >= MAX_LIVES) {
             return false;
@@ -136,51 +118,34 @@ public final class Player extends GameObject {
         return true;
     }
 
-    /** Adds 1 key to the player's inventory. */
+    /** Adds one key to the player. */
     public void addKey() {
         keyCount++;
     }
 
-    /** Activates or extends the speed boost timer. */
-    public void activateSpeedBoost(float durationSeconds) {
-        if (durationSeconds > speedBoostTime) {
-            speedBoostTime = durationSeconds;
-        }
+    /** Starts or extends the speed boost. */
+    public void activateSpeedBoost(float seconds) {
+        speedBoostTime = Math.max(speedBoostTime, seconds);
     }
 
-    /** Activates or extends the shield timer. */
-    public void activateShield(float durationSeconds) {
-        if (durationSeconds > shieldTime) {
-            shieldTime = durationSeconds;
-        }
+    /** Starts or extends the shield. */
+    public void activateShield(float seconds) {
+        shieldTime = Math.max(shieldTime, seconds);
     }
 
-    /** Counts down active power-up timers each frame. */
+    /** Counts down the power-up timers. */
     public void updateEffects(float deltaSeconds) {
-        speedBoostTime -= deltaSeconds;
-        if (speedBoostTime < 0.0f) {
-            speedBoostTime = 0.0f;
-        }
-        shieldTime -= deltaSeconds;
-        if (shieldTime < 0.0f) {
-            shieldTime = 0.0f;
-        }
+        speedBoostTime = Math.max(0, speedBoostTime - deltaSeconds);
+        shieldTime = Math.max(0, shieldTime - deltaSeconds);
     }
 
-    /** Clears held movement and active power-up timers. */
-    public void resetTemporaryState() {
-        requestedDirection = null;
-        sprinting = false;
-        movementProgress = 0.0f;
-        speedBoostTime = 0.0f;
-        shieldTime = 0.0f;
-    }
-
-    /** Resets position, lives, keys, and temporary effects for a new game. */
+    /** Resets position, lives, keys, movement and power-ups for a new game. */
     public void resetForNewGame(int startX, int startY, int startingLives) {
         setPosition(startX, startY);
-        this.lives = startingLives;
-        this.keyCount = 0;
-        resetTemporaryState();
+        lives = startingLives;
+        keyCount = 0;
+        setMovement(null, false);
+        speedBoostTime = 0;
+        shieldTime = 0;
     }
 }

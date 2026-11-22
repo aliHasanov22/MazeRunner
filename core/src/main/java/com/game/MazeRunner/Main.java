@@ -59,7 +59,6 @@ public class Main extends ApplicationAdapter {
         map.setTile(new Wall(2, 2));
         map.setTile(new Wall(2, 3));
         map.setTile(new Trap(4, 2));
-        map.validate();
 
         GameWorld gameWorld = new GameWorld(map);
         gameWorld.addCollectable(new Key(1, 2));

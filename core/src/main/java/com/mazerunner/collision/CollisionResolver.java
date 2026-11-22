@@ -13,120 +13,84 @@ import com.mazerunner.entities.Enemy;
 import com.mazerunner.entities.Exit;
 import com.mazerunner.entities.GameObject;
 import com.mazerunner.entities.Player;
-import com.mazerunner.map.GridPosition;
 
 /**
- * Handles player collisions with collectable items, hazards, and the exit.
- * Also tracks the hit cooldown and active hazard contacts so standing on a trap
- * only removes one life on entry instead of draining lives every frame.
+ * Checks what the player is touching: items, traps, enemies and the exit.
+ * A hazard only hurts when the player first steps on it, and after a hit
+ * there is a 1 second cooldown, so one collision removes only one life.
  *
  * @author Ali Hasanov
  */
 public final class CollisionResolver {
 
-    public static final float DEFAULT_HIT_COOLDOWN_SECONDS = 1.0f;
+    public static final float HIT_COOLDOWN_SECONDS = 1.0f;
 
-    private final float hitCooldownSeconds;
     private float cooldownRemaining;
-    private final Set<Long> activeDamageContacts = new HashSet<>();
+    private final Set<Long> touchingHazards = new HashSet<>();
 
-    /** Creates a collision resolver with the default 1-second hit cooldown. */
-    public CollisionResolver() {
-        this(DEFAULT_HIT_COOLDOWN_SECONDS);
-    }
-
-    /** Creates a collision resolver with a custom hit cooldown in seconds. */
-    public CollisionResolver(float hitCooldownSeconds) {
-        if (hitCooldownSeconds < 0.0f) {
-            throw new IllegalArgumentException("Hit cooldown cannot be negative");
-        }
-        this.hitCooldownSeconds = hitCooldownSeconds;
-    }
-
-    /** Counts down the remaining hit cooldown timer each frame. */
+    /** Counts down the hit cooldown. */
     public void update(float deltaSeconds) {
-        if (deltaSeconds < 0.0f) {
-            throw new IllegalArgumentException("Delta time cannot be negative");
-        }
-        cooldownRemaining -= deltaSeconds;
-        if (cooldownRemaining < 0.0f) {
-            cooldownRemaining = 0.0f;
-        }
+        cooldownRemaining = Math.max(0, cooldownRemaining - deltaSeconds);
     }
 
-    /**
-     * Checks all collisions at the player's current cell (items, traps, enemies, and exit).
-     * A hazard only damages the player when first entered.
-     */
+    /** Handles all collisions on the player's current cell. */
     public void resolve(GameWorld world) {
-        if (world == null) {
-            throw new IllegalArgumentException("World cannot be null");
-        }
         if (world.getState() != GameState.RUNNING) {
             return;
         }
-
         Player player = world.getPlayer();
-        GridPosition playerPosition = player.getPosition();
 
-        collectItemsAtPlayer(world, player);
-
-        Set<Long> currentContacts = new HashSet<>();
-        List<Damaging> newContacts = new ArrayList<>();
-
-        GameObject tile = world.getMap().getTileAt(playerPosition.x(), playerPosition.y());
-        checkDamageContact(tile, player, currentContacts, newContacts);
-
-        for (Enemy enemy : world.getMap().getEnemies()) {
-            checkDamageContact(enemy, player, currentContacts, newContacts);
+        // 1. pick up items
+        List<GameObject> pickedUp = new ArrayList<>();
+        for (GameObject item : world.getCollectables()) {
+            if (player.collidesWith(item)) {
+                ((Collectable) item).collect(world, player);
+                pickedUp.add(item);
+            }
+        }
+        for (GameObject item : pickedUp) {
+            world.removeCollectable(item);
         }
 
-        if (!player.hasShield() && cooldownRemaining <= 0.0f && !newContacts.isEmpty()) {
-            Damaging hazard = newContacts.get(0);
-            GameObject source = (GameObject) hazard;
-            world.damagePlayer(hazard, source.getPosition(), source.getClass().getSimpleName());
-            cooldownRemaining = hitCooldownSeconds;
+        // 2. find hazards the player is standing on
+        List<GameObject> hazards = new ArrayList<>();
+        GameObject tile = world.getMap().getTileAt(player.getX(), player.getY());
+        hazards.add(tile);
+        hazards.addAll(world.getMap().getEnemies());
+
+        Set<Long> nowTouching = new HashSet<>();
+        GameObject newHit = null;
+        for (GameObject hazard : hazards) {
+            if (hazard instanceof Damaging && player.collidesWith(hazard)) {
+                nowTouching.add(hazard.getId());
+                if (newHit == null && !touchingHazards.contains(hazard.getId())) {
+                    newHit = hazard;
+                }
+            }
+        }
+        touchingHazards.clear();
+        touchingHazards.addAll(nowTouching);
+
+        // 3. damage only on a new contact and when the cooldown is over
+        if (newHit != null && cooldownRemaining <= 0) {
+            world.damagePlayer((Damaging) newHit, newHit.getPosition(), newHit.getClass().getSimpleName());
+            cooldownRemaining = HIT_COOLDOWN_SECONDS;
         }
 
-        activeDamageContacts.clear();
-        activeDamageContacts.addAll(currentContacts);
-
-        if (world.getState() == GameState.RUNNING && tile instanceof Exit && player.hasKey()) {
+        // 4. win when standing on an exit with a key
+        if (tile instanceof Exit && player.hasKey()) {
             world.finishVictory();
         }
     }
 
-    /** Resets the hit cooldown and clears active hazard contacts for a new game. */
+    /** Clears the cooldown and contacts for a new game. */
     public void reset() {
-        cooldownRemaining = 0.0f;
-        activeDamageContacts.clear();
+        cooldownRemaining = 0;
+        touchingHazards.clear();
     }
 
-    /** Returns how much cooldown time is left in seconds. */
+    /** Returns the remaining cooldown in seconds. */
     public float getCooldownRemaining() {
         return cooldownRemaining;
-    }
-
-    private void checkDamageContact(GameObject object, Player player,
-                                    Set<Long> currentContacts, List<Damaging> newContacts) {
-        if (object instanceof Damaging && player.collidesWith(object)) {
-            currentContacts.add(object.getId());
-            if (!activeDamageContacts.contains(object.getId())) {
-                newContacts.add((Damaging) object);
-            }
-        }
-    }
-
-    private void collectItemsAtPlayer(GameWorld world, Player player) {
-        List<GameObject> collected = new ArrayList<>();
-        for (GameObject item : world.getCollectables()) {
-            if (item instanceof Collectable && player.collidesWith(item)) {
-                ((Collectable) item).collect(world, player);
-                collected.add(item);
-            }
-        }
-        for (GameObject item : collected) {
-            world.removeCollectable(item);
-        }
     }
 }

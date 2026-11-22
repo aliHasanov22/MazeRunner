@@ -5,31 +5,26 @@ import com.mazerunner.input.Direction;
 import com.mazerunner.map.GridPosition;
 
 /**
- * Moving enemy entity that damages the player on contact and patrols
- * neighbouring walkable cells.
+ * Moving enemy that damages the player on contact. For now it does a simple
+ * patrol; the enemy AI (Patrol / Attack / Evade / Retreat) will replace update().
  *
  * @author Ali Hasanov
  */
 public final class Enemy extends GameObject implements Damaging {
 
     private static final float SECONDS_PER_STEP = 0.8f;
-    private static final Direction[] DIRECTIONS = {
-        Direction.RIGHT,
-        Direction.DOWN,
-        Direction.LEFT,
-        Direction.UP
-    };
+    private static final Direction[] PATROL = {Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP};
 
     private final int startX;
     private final int startY;
-    private float movementTimer;
+    private float timer;
     private int directionIndex;
 
-    /** Creates an enemy at (x, y) and remembers its starting cell for resets. */
+    /** Creates an enemy at (x, y). */
     public Enemy(int x, int y) {
         super(x, y);
-        this.startX = x;
-        this.startY = y;
+        startX = x;
+        startY = y;
     }
 
     /** Touching an enemy removes 1 life. */
@@ -38,38 +33,28 @@ public final class Enemy extends GameObject implements Damaging {
         return 1;
     }
 
-    /** Moves the enemy one cell every SECONDS_PER_STEP seconds in a basic patrol loop. */
+    /** Moves one cell every 0.8 seconds, turning when the way is blocked. */
     @Override
     public void update(float deltaSeconds, GameWorld world) {
-        movementTimer += deltaSeconds;
-
-        while (movementTimer >= SECONDS_PER_STEP) {
-            movementTimer -= SECONDS_PER_STEP;
-            boolean moved = false;
-
-            for (int attempt = 0; attempt < DIRECTIONS.length; attempt++) {
-                Direction dir = DIRECTIONS[directionIndex];
-                directionIndex = (directionIndex + 1) % DIRECTIONS.length;
-                GridPosition next = getPosition().move(dir);
-
-                if (world.canEnemyEnter(next, this)) {
-                    setPosition(next.x(), next.y());
-                    moved = true;
-                    break;
-                }
+        timer += deltaSeconds;
+        if (timer < SECONDS_PER_STEP) {
+            return;
+        }
+        timer = 0;
+        for (int i = 0; i < PATROL.length; i++) {
+            GridPosition next = getPosition().move(PATROL[directionIndex]);
+            if (world.canEnemyEnter(next, this)) {
+                setPosition(next.x(), next.y());
+                return;
             }
-
-            if (!moved) {
-                movementTimer = 0.0f;
-                break;
-            }
+            directionIndex = (directionIndex + 1) % PATROL.length;
         }
     }
 
-    /** Puts the enemy back on its initial spawn cell for a new game. */
+    /** Puts the enemy back on its starting cell. */
     public void resetForNewGame() {
         setPosition(startX, startY);
-        movementTimer = 0.0f;
+        timer = 0;
         directionIndex = 0;
     }
 }
