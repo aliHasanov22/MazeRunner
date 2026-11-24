@@ -1,0 +1,82 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+abstract class com.badlogic.gdx.Game
+interface com.badlogic.gdx.Screen
+
+class MazeRunnerGame {
+  - spriteBatch : SpriteBatch
+  - skin : Skin
+  - gameScreen : GameScreen
+  - currentMapPath : String
+  + goToMenu()
+  + goToMapSelection()
+  + startGame(mapPath : String)
+  + restartGame()
+  + continueGame()
+  + pauseGame()
+  + finishGame(won : boolean, score : int, time : float)
+  + hasGameInProgress() : boolean
+}
+
+interface HudInfo {
+  + getLives() : int
+  + getMaxLives() : int
+  + hasKey() : boolean
+  + getScore() : int
+  + getPlayTime() : float
+  + getPlayerPosition() : GridPosition
+  + getNearestExit() : GridPosition
+}
+
+interface GameSession {
+  + tick(delta : float)
+  + render()
+  + resize(width : int, height : int)
+  + pause()
+  + resume()
+  + isWon() : boolean
+  + isLost() : boolean
+}
+
+class WorldSession
+class DemoLevel {
+  + {static} create() : GameWorld
+}
+class GameWorld
+
+abstract class StageScreen {
+  # addButton(table, text, action) : TextButton
+  # titleLabel(text) : Label
+  # handleKeys()
+}
+class MenuScreen
+class MapSelectScreen
+class EndScreen
+class GameScreen
+class Hud {
+  + update(info : HudInfo)
+  + draw()
+  + resize(width : int, height : int)
+}
+class HudMath {
+  + {static} formatTime(seconds : float) : String
+  + {static} angleBetween(from, to) : float
+}
+
+com.badlogic.gdx.Game <|-- MazeRunnerGame
+com.badlogic.gdx.Screen <|.. StageScreen
+com.badlogic.gdx.Screen <|.. GameScreen
+StageScreen <|-- MenuScreen
+StageScreen <|-- MapSelectScreen
+StageScreen <|-- EndScreen
+HudInfo <|-- GameSession
+GameSession <|.. WorldSession
+WorldSession --> GameWorld
+DemoLevel ..> GameWorld : creates
+MazeRunnerGame o-- GameScreen : kept for Continue
+GameScreen --> GameSession
+GameScreen *-- Hud
+Hud ..> HudInfo
+Hud ..> HudMath
+@enduml

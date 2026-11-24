@@ -22,3 +22,9 @@ tasks.register('coreGameplaySmokeTest', JavaExec) {
   mainClass = 'com.mazerunner.CoreGameplaySelfTest'
   classpath = sourceSets.test.runtimeClasspath
 }
+
+tasks.register('screensSmokeTest', JavaExec) {
+  dependsOn testClasses
+  mainClass = 'com.mazerunner.ScreensSelfTest'
+  classpath = sourceSets.test.runtimeClasspath
+}
