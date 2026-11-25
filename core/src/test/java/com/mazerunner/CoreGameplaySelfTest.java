@@ -31,7 +31,12 @@ public final class CoreGameplaySelfTest {
 
     private static int eventCalls = 0;
 
-    /** Runs all checks. Throws AssertionError if one fails. */
+    /**
+     * Runs all core gameplay checks in sequence.
+     *
+     * @param args command-line arguments (unused)
+     * @throws AssertionError if any gameplay rule check fails
+     */
     public static void main(String[] args) {
         // factory IDs 0-5
         ObjectFactory factory = new ObjectFactory();

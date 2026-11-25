@@ -41,49 +41,89 @@ public final class GameWorld {
     private int score;
     private float elapsedSeconds;
 
-    /** Creates a new game on the given map. The player starts on the Entry tile with 3 lives. */
+    /**
+     * Creates a new game session on the given map.
+     * Finds the map's {@link Entry} tile and spawns the player there with the default 3 lives.
+     *
+     * @param map the maze grid to play on
+     * @throws IllegalStateException if the map does not contain an entry tile
+     */
     public GameWorld(GridMap map) {
         this.map = map;
         Entry entry = map.findEntry();
         this.player = new Player(entry.getX(), entry.getY(), Player.DEFAULT_LIVES);
     }
 
-    /** Returns the map. */
+    /**
+     * Returns the maze map used by this game session.
+     *
+     * @return the current {@link GridMap}
+     */
     public GridMap getMap() {
         return map;
     }
 
-    /** Returns the player. */
+    /**
+     * Returns the player entity for this game session.
+     *
+     * @return the active {@link Player}
+     */
     public Player getPlayer() {
         return player;
     }
 
-    /** Returns the event bus that UI and audio can subscribe to. */
+    /**
+     * Returns the event bus that UI, HUD, and audio modules can subscribe to.
+     *
+     * @return the {@link EventBus} for this game world
+     */
     public EventBus getEventBus() {
         return eventBus;
     }
 
-    /** Returns the current game state. */
+    /**
+     * Returns the current lifecycle state of the game.
+     *
+     * @return the active {@link GameState}
+     */
     public GameState getState() {
         return state;
     }
 
-    /** Returns the current score. */
+    /**
+     * Returns the player's current score.
+     *
+     * @return total score points accumulated so far
+     */
     public int getScore() {
         return score;
     }
 
-    /** Returns the played time in seconds (paused time is not counted). */
+    /**
+     * Returns the total active play time in seconds, excluding paused time.
+     *
+     * @return elapsed play time in seconds
+     */
     public float getElapsedSeconds() {
         return elapsedSeconds;
     }
 
-    /** Returns a read-only list of items still on the map. */
+    /**
+     * Returns an unmodifiable view of collectable items still remaining on the map.
+     *
+     * @return read-only list of active collectable objects
+     */
     public List<GameObject> getCollectables() {
         return Collections.unmodifiableList(collectables);
     }
 
-    /** Adds a Key, ExtraLife or PowerUp to the map. */
+    /**
+     * Adds a collectable item (such as a Key, ExtraLife, or PowerUp) to the map
+     * and stores it so it can be restored when restarting the game.
+     *
+     * @param item the collectable game object to place on the map
+     * @throws IllegalArgumentException if {@code item} does not implement {@link Collectable}
+     */
     public void addCollectable(GameObject item) {
         if (!(item instanceof Collectable)) {
             throw new IllegalArgumentException("Item must be Collectable");
@@ -92,19 +132,32 @@ public final class GameWorld {
         startingCollectables.add(item);
     }
 
-    /** Removes an item after it is picked up. */
+    /**
+     * Removes a collectable item from the active map list after it is picked up.
+     *
+     * @param item the collected item to remove
+     */
     public void removeCollectable(GameObject item) {
         collectables.remove(item);
     }
 
-    /** Passes the held direction (or null) and sprint key to the player while running. */
+    /**
+     * Passes the currently held movement direction and sprint flag to the player.
+     * Ignored when the game is not in {@link GameState#RUNNING}.
+     *
+     * @param direction the held movement direction, or {@code null} to stop moving
+     * @param sprint    {@code true} if the sprint key is held
+     */
     public void setMovement(Direction direction, boolean sprint) {
         if (state == GameState.RUNNING) {
             player.setMovement(direction, sprint);
         }
     }
 
-    /** Pauses the game and stops the player. */
+    /**
+     * Pauses an active game and clears any held player movement so the player
+     * does not move unexpectedly on resume.
+     */
     public void pause() {
         if (state == GameState.RUNNING) {
             state = GameState.PAUSED;
@@ -112,14 +165,19 @@ public final class GameWorld {
         }
     }
 
-    /** Continues a paused game. */
+    /**
+     * Resumes a paused game back into {@link GameState#RUNNING}.
+     */
     public void resume() {
         if (state == GameState.PAUSED) {
             state = GameState.RUNNING;
         }
     }
 
-    /** Goes to the menu from pause, victory or game over. */
+    /**
+     * Transitions the game to {@link GameState#MENU} from pause, victory, or game over,
+     * and clears held player movement. Ignored if currently running.
+     */
     public void returnToMenu() {
         if (state != GameState.RUNNING) {
             state = GameState.MENU;
@@ -127,7 +185,11 @@ public final class GameWorld {
         }
     }
 
-    /** Restarts the same map: player, enemies, items, score, timer and cooldown are reset. */
+    /**
+     * Restarts the current map from the beginning: resets player position, lives, keys,
+     * power-ups, enemies, collectables, score, elapsed time, and hit cooldown, sets state
+     * to {@link GameState#RUNNING}, and publishes a {@link GameEvent.NewGameStartedEvent}.
+     */
     public void resetForNewGame() {
         Entry entry = map.findEntry();
         player.resetForNewGame(entry.getX(), entry.getY(), Player.DEFAULT_LIVES);
@@ -141,7 +203,13 @@ public final class GameWorld {
         eventBus.publish(new GameEvent.NewGameStartedEvent());
     }
 
-    /** Updates the game by deltaSeconds. Does nothing unless the game is RUNNING. */
+    /**
+     * Advances the game simulation by {@code deltaSeconds}: updates timers, enemies,
+     * player cell movement, and collision resolution. Does nothing if the game is not
+     * {@link GameState#RUNNING} or if {@code deltaSeconds <= 0}.
+     *
+     * @param deltaSeconds time elapsed since the last frame in seconds
+     */
     public void tick(float deltaSeconds) {
         if (state != GameState.RUNNING || deltaSeconds <= 0) {
             return;
@@ -167,13 +235,26 @@ public final class GameWorld {
         }
     }
 
-    /** Returns true if the player can walk onto this cell (walls and locked exits block). */
+    /**
+     * Checks whether the player is allowed to move onto the given grid cell.
+     * Walls always block, and exits block until the player has a key.
+     *
+     * @param position target grid cell to test
+     * @return {@code true} if the cell is inside the map and not blocked
+     */
     public boolean canPlayerEnter(GridPosition position) {
         GameObject tile = map.getTileAt(position.x(), position.y());
         return tile != null && !tile.blocksMovement(player.hasKey());
     }
 
-    /** Returns true if an enemy can walk onto this cell (no walls, exits or other enemies). */
+    /**
+     * Checks whether an enemy is allowed to move onto the given grid cell.
+     * Enemies cannot enter walls, exits, out-of-bounds cells, or cells occupied by another enemy.
+     *
+     * @param position    target grid cell to test
+     * @param movingEnemy the enemy attempting to move (excluded from overlap check)
+     * @return {@code true} if the enemy may step onto {@code position}
+     */
     public boolean canEnemyEnter(GridPosition position, Enemy movingEnemy) {
         GameObject tile = map.getTileAt(position.x(), position.y());
         if (tile == null || tile.blocksMovement(false)) {
@@ -187,13 +268,27 @@ public final class GameWorld {
         return true;
     }
 
-    /** Adds points to the score and publishes a ScoreChangedEvent. */
+    /**
+     * Adds points to the score and publishes a {@link GameEvent.ScoreChangedEvent}.
+     *
+     * @param points number of points to add
+     * @param reason short description of why the points were awarded
+     */
     public void addScore(int points, String reason) {
         score += points;
         eventBus.publish(new GameEvent.ScoreChangedEvent(score, points, reason));
     }
 
-    /** Removes lives from the player (unless shielded). Switches to GAME_OVER at 0 lives. */
+    /**
+     * Applies damage from a hazard to the player and publishes a {@link GameEvent.LifeLostEvent}.
+     * Ignored if the game is not running or the player has an active shield.
+     * Transitions to {@link GameState#GAME_OVER} and publishes {@link GameEvent.GameOverEvent}
+     * if the player's remaining lives drop to zero.
+     *
+     * @param hazard     the damaging obstacle or enemy that hit the player
+     * @param position   the grid position where the hit occurred
+     * @param sourceName class or display name of the hazard source
+     */
     public void damagePlayer(Damaging hazard, GridPosition position, String sourceName) {
         if (state != GameState.RUNNING || player.hasShield()) {
             return;
@@ -207,7 +302,11 @@ public final class GameWorld {
         }
     }
 
-    /** Ends the game as a win and adds the victory, time and life bonuses. */
+    /**
+     * Ends an active game as a victory: switches state to {@link GameState#VICTORY},
+     * stops movement, awards the completion, time, and remaining-life score bonuses,
+     * and publishes a {@link GameEvent.VictoryEvent}.
+     */
     public void finishVictory() {
         if (state != GameState.RUNNING) {
             return;

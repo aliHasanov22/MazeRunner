@@ -7,12 +7,21 @@ package com.mazerunner.entities;
  */
 public final class Trap extends GameObject implements Damaging {
 
-    /** Creates a trap tile at (x, y). */
+    /**
+     * Creates a static trap tile at the given grid coordinates.
+     *
+     * @param x horizontal grid coordinate
+     * @param y vertical grid coordinate
+     */
     public Trap(int x, int y) {
         super(x, y);
     }
 
-    /** Touching a trap removes 1 life. */
+    /**
+     * Returns the life damage dealt when the player steps onto this trap.
+     *
+     * @return {@code 1} life lost per hit
+     */
     @Override
     public int getDamageAmount() {
         return 1;

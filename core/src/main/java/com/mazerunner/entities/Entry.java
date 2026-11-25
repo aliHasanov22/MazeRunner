@@ -7,7 +7,12 @@ package com.mazerunner.entities;
  */
 public final class Entry extends GameObject {
 
-    /** Creates the entry tile at (x, y). */
+    /**
+     * Creates the player starting entry tile at the given grid coordinates.
+     *
+     * @param x horizontal grid coordinate
+     * @param y vertical grid coordinate
+     */
     public Entry(int x, int y) {
         super(x, y);
     }

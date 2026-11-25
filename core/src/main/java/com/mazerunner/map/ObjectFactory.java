@@ -16,14 +16,33 @@ import com.mazerunner.entities.Wall;
  */
 public final class ObjectFactory {
 
+    /** Map type ID ({@code 0}) for a walkable {@link FreePath} cell. */
     public static final int FREE_PATH_ID = 0;
+
+    /** Map type ID ({@code 1}) for a solid {@link Wall} cell. */
     public static final int WALL_ID = 1;
+
+    /** Map type ID ({@code 2}) for the player {@link Entry} cell. */
     public static final int ENTRY_ID = 2;
+
+    /** Map type ID ({@code 3}) for a border {@link Exit} cell. */
     public static final int EXIT_ID = 3;
+
+    /** Map type ID ({@code 4}) for a static {@link Trap} cell. */
     public static final int TRAP_ID = 4;
+
+    /** Map type ID ({@code 5}) for a moving {@link Enemy} entity. */
     public static final int ENEMY_ID = 5;
 
-    /** Creates the GameObject for typeId (0..5) at grid coordinate (x, y). */
+    /**
+     * Instantiates the {@link GameObject} corresponding to {@code typeId} at {@code (x, y)}.
+     *
+     * @param typeId numeric map object ID ({@code 0} through {@code 5})
+     * @param x      horizontal grid coordinate
+     * @param y      vertical grid coordinate
+     * @return newly created {@link GameObject} for the given ID
+     * @throws IllegalArgumentException if {@code typeId} is not between {@code 0} and {@code 5}
+     */
     public GameObject create(int typeId, int x, int y) {
         switch (typeId) {
             case FREE_PATH_ID:

@@ -1,0 +1,376 @@
+@startuml
+title MazeRunner Core Gameplay (Member 1) - UML Class Diagram
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 4
+
+package com.mazerunner.core {
+  enum GameState {
+    RUNNING
+    PAUSED
+    VICTORY
+    GAME_OVER
+    MENU
+  }
+
+  class GameWorld {
+    - {static} VICTORY_SCORE : int = 500
+    - {static} POINTS_PER_LIFE : int = 100
+    - {static} MAX_TIME_BONUS : int = 600
+    - {static} POINTS_PER_SECOND : int = 5
+    - map : GridMap
+    - player : Player
+    - eventBus : EventBus
+    - collisionResolver : CollisionResolver
+    - collectables : List<GameObject>
+    - startingCollectables : List<GameObject>
+    - state : GameState
+    - score : int
+    - elapsedSeconds : float
+    __
+    + GameWorld(map : GridMap)
+    + getMap() : GridMap
+    + getPlayer() : Player
+    + getEventBus() : EventBus
+    + getState() : GameState
+    + getScore() : int
+    + getElapsedSeconds() : float
+    + getCollectables() : List<GameObject>
+    + addCollectable(item : GameObject) : void
+    + removeCollectable(item : GameObject) : void
+    + setMovement(direction : Direction, sprint : boolean) : void
+    + pause() : void
+    + resume() : void
+    + returnToMenu() : void
+    + resetForNewGame() : void
+    + tick(deltaSeconds : float) : void
+    + canPlayerEnter(position : GridPosition) : boolean
+    + canEnemyEnter(position : GridPosition, movingEnemy : Enemy) : boolean
+    + addScore(points : int, reason : String) : void
+    + damagePlayer(hazard : Damaging, position : GridPosition, sourceName : String) : void
+    + finishVictory() : void
+  }
+}
+
+package com.mazerunner.collision {
+  class CollisionResolver {
+    + {static} HIT_COOLDOWN_SECONDS : float = 1.0f
+    - cooldownRemaining : float
+    - touchingHazards : Set<Long>
+    __
+    + update(deltaSeconds : float) : void
+    + resolve(world : GameWorld) : void
+    + reset() : void
+    + getCooldownRemaining() : float
+  }
+}
+
+package com.mazerunner.entities {
+  interface Collidable {
+    + collidesWith(other : GameObject) : boolean
+  }
+
+  interface Damaging {
+    + getDamageAmount() : int
+  }
+
+  interface Collectable {
+    + collect(world : GameWorld, player : Player) : void
+  }
+
+  abstract class GameObject {
+    - {static} nextId : long = 1
+    - id : long
+    - x : int
+    - y : int
+    __
+    # GameObject(x : int, y : int)
+    + getId() : long
+    + getX() : int
+    + getY() : int
+    + getPosition() : GridPosition
+    # setPosition(newX : int, newY : int) : void
+    + blocksMovement(hasKey : boolean) : boolean
+    + update(deltaSeconds : float, world : GameWorld) : void
+    + collidesWith(other : GameObject) : boolean
+  }
+
+  class Player {
+    + {static} DEFAULT_LIVES : int = 3
+    + {static} MAX_LIVES : int = 5
+    + {static} NORMAL_SPEED : float = 4.0f
+    + {static} SPRINT_SPEED : float = 7.0f
+    + {static} SPEED_BOOST_MULTIPLIER : float = 1.5f
+    - lives : int
+    - keyCount : int
+    - direction : Direction
+    - sprinting : boolean
+    - movementProgress : float
+    - speedBoostTime : float
+    - shieldTime : float
+    __
+    + Player(x : int, y : int, lives : int)
+    + getLives() : int
+    + getKeyCount() : int
+    + hasKey() : boolean
+    + hasShield() : boolean
+    + getShieldTime() : float
+    + getSpeedBoostTime() : float
+    + getDirection() : Direction
+    + setMovement(direction : Direction, sprint : boolean) : void
+    + addMovementTime(deltaSeconds : float) : void
+    + canMoveOneCell() : boolean
+    + stepTo(position : GridPosition) : void
+    + clearMovementTime() : void
+    + loseLives(amount : int) : int
+    + addLife() : boolean
+    + addKey() : void
+    + activateSpeedBoost(seconds : float) : void
+    + activateShield(seconds : float) : void
+    + updateEffects(deltaSeconds : float) : void
+    + resetForNewGame(startX : int, startY : int, startingLives : int) : void
+  }
+
+  class Enemy {
+    - {static} SECONDS_PER_STEP : float = 0.8f
+    - {static} PATROL : Direction[]
+    - startX : int
+    - startY : int
+    - timer : float
+    - directionIndex : int
+    __
+    + Enemy(x : int, y : int)
+    + getDamageAmount() : int
+    + update(deltaSeconds : float, world : GameWorld) : void
+    + resetForNewGame() : void
+  }
+
+  class Wall {
+    + Wall(x : int, y : int)
+    + blocksMovement(hasKey : boolean) : boolean
+  }
+
+  class FreePath {
+    + FreePath(x : int, y : int)
+  }
+
+  class Entry {
+    + Entry(x : int, y : int)
+  }
+
+  class Exit {
+    + Exit(x : int, y : int)
+    + blocksMovement(hasKey : boolean) : boolean
+  }
+
+  class Trap {
+    + Trap(x : int, y : int)
+    + getDamageAmount() : int
+  }
+
+  class Key {
+    + Key(x : int, y : int)
+    + collect(world : GameWorld, player : Player) : void
+  }
+
+  class ExtraLife {
+    + ExtraLife(x : int, y : int)
+    + collect(world : GameWorld, player : Player) : void
+  }
+
+  class PowerUp {
+    - type : PowerUpType
+    - durationSeconds : float
+    __
+    + PowerUp(x : int, y : int, type : PowerUpType, durationSeconds : float)
+    + getType() : PowerUpType
+    + getDurationSeconds() : float
+    + collect(world : GameWorld, player : Player) : void
+  }
+}
+
+package com.mazerunner.map {
+  class GridPosition <<record>> {
+    - x : int
+    - y : int
+    __
+    + GridPosition(x : int, y : int)
+    + x() : int
+    + y() : int
+    + move(direction : Direction) : GridPosition
+  }
+
+  class GridMap {
+    - width : int
+    - height : int
+    - cells : GameObject[][]
+    - enemies : List<Enemy>
+    __
+    + GridMap(width : int, height : int)
+    + getWidth() : int
+    + getHeight() : int
+    + isInside(x : int, y : int) : boolean
+    + getTileAt(x : int, y : int) : GameObject
+    + setTile(object : GameObject) : void
+    + getEnemies() : List<Enemy>
+    + findEntry() : Entry
+    + findNearestExit(from : GridPosition) : Exit
+    + resetEnemies() : void
+  }
+
+  class ObjectFactory {
+    + {static} FREE_PATH_ID : int = 0
+    + {static} WALL_ID : int = 1
+    + {static} ENTRY_ID : int = 2
+    + {static} EXIT_ID : int = 3
+    + {static} TRAP_ID : int = 4
+    + {static} ENEMY_ID : int = 5
+    __
+    + create(typeId : int, x : int, y : int) : GameObject
+  }
+}
+
+package com.mazerunner.events {
+  class EventBus {
+    - listeners : Map<Class<?>, List<Consumer<?>>>
+    __
+    + <E> subscribe(eventType : Class<E>, listener : Consumer<E>) : void
+    + <E> unsubscribe(eventType : Class<E>, listener : Consumer<E>) : void
+    + publish(event : Object) : void
+  }
+
+  interface GameEvent {
+  }
+
+  class "GameEvent.LifeLostEvent" as LifeLostEvent <<record>> {
+    - source : String
+    - position : GridPosition
+    - livesRemaining : int
+    - livesLost : int
+    __
+    + source() : String
+    + position() : GridPosition
+    + livesRemaining() : int
+    + livesLost() : int
+  }
+
+  class "GameEvent.KeyCollectedEvent" as KeyCollectedEvent <<record>> {
+    - position : GridPosition
+    - totalKeys : int
+    __
+    + position() : GridPosition
+    + totalKeys() : int
+  }
+
+  class "GameEvent.ScoreChangedEvent" as ScoreChangedEvent <<record>> {
+    - newScore : int
+    - pointsAdded : int
+    - reason : String
+    __
+    + newScore() : int
+    + pointsAdded() : int
+    + reason() : String
+  }
+
+  class "GameEvent.ExtraLifeCollectedEvent" as ExtraLifeCollectedEvent <<record>> {
+    - livesNow : int
+    - lifeWasAdded : boolean
+    __
+    + livesNow() : int
+    + lifeWasAdded() : boolean
+  }
+
+  class "GameEvent.PowerUpCollectedEvent" as PowerUpCollectedEvent <<record>> {
+    - type : PowerUpType
+    - durationSeconds : float
+    __
+    + type() : PowerUpType
+    + durationSeconds() : float
+  }
+
+  class "GameEvent.VictoryEvent" as VictoryEvent <<record>> {
+    - finalScore : int
+    - completionTimeSeconds : float
+    - livesRemaining : int
+    __
+    + finalScore() : int
+    + completionTimeSeconds() : float
+    + livesRemaining() : int
+  }
+
+  class "GameEvent.GameOverEvent" as GameOverEvent <<record>> {
+    - finalScore : int
+    __
+    + finalScore() : int
+  }
+
+  class "GameEvent.NewGameStartedEvent" as NewGameStartedEvent <<record>> {
+  }
+}
+
+package com.mazerunner.input {
+  enum Direction {
+    UP(0, 1)
+    DOWN(0, -1)
+    LEFT(-1, 0)
+    RIGHT(1, 0)
+    __
+    - dx : int
+    - dy : int
+    __
+    + getDx() : int
+    + getDy() : int
+  }
+}
+
+package com.mazerunner.items {
+  enum PowerUpType {
+    SPEED_BOOST
+    SHIELD
+  }
+}
+
+GameObject ..|> Collidable
+Player --|> GameObject
+Enemy --|> GameObject
+Wall --|> GameObject
+FreePath --|> GameObject
+Entry --|> GameObject
+Exit --|> GameObject
+Trap --|> GameObject
+Key --|> GameObject
+ExtraLife --|> GameObject
+PowerUp --|> GameObject
+
+Trap ..|> Damaging
+Enemy ..|> Damaging
+Key ..|> Collectable
+ExtraLife ..|> Collectable
+PowerUp ..|> Collectable
+
+LifeLostEvent ..|> GameEvent
+KeyCollectedEvent ..|> GameEvent
+ScoreChangedEvent ..|> GameEvent
+ExtraLifeCollectedEvent ..|> GameEvent
+PowerUpCollectedEvent ..|> GameEvent
+VictoryEvent ..|> GameEvent
+GameOverEvent ..|> GameEvent
+NewGameStartedEvent ..|> GameEvent
+
+GameWorld "1" *-- "1" Player : owns
+GameWorld "1" *-- "1" CollisionResolver : owns
+GameWorld "1" *-- "1" EventBus : owns
+GameWorld "1" o-- "1" GridMap : uses
+GameWorld "1" o-- "0..*" Collectable : collectables
+GameWorld "1" --> "1" GameState : state
+
+GridMap "1" *-- "1..*" GameObject : cells[][]
+GridMap "1" o-- "0..*" Enemy : enemies
+
+Player --> "0..1" Direction : direction
+PowerUp --> "1" PowerUpType : type
+ObjectFactory ..> GameObject : creates IDs 0..5
+CollisionResolver ..> GameWorld : resolves contacts
+EventBus ..> GameEvent : publishes
+@enduml

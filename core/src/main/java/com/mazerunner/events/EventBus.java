@@ -16,13 +16,25 @@ public final class EventBus {
 
     private final Map<Class<?>, List<Consumer<?>>> listeners = new HashMap<>();
 
-    /** Registers a listener for one event type. */
+    /**
+     * Registers a listener callback for a specific event class.
+     *
+     * @param <E>       the event type being subscribed to
+     * @param eventType class object of the event type to listen for
+     * @param listener  callback invoked whenever an event of {@code eventType} is published
+     */
     public <E> void subscribe(Class<E> eventType, Consumer<E> listener) {
         listeners.putIfAbsent(eventType, new ArrayList<>());
         listeners.get(eventType).add(listener);
     }
 
-    /** Removes a listener that was registered before. */
+    /**
+     * Unregisters a previously added listener callback for a specific event class.
+     *
+     * @param <E>       the event type
+     * @param eventType class object of the event type
+     * @param listener  the callback to remove
+     */
     public <E> void unsubscribe(Class<E> eventType, Consumer<E> listener) {
         List<Consumer<?>> list = listeners.get(eventType);
         if (list != null) {
@@ -30,7 +42,11 @@ public final class EventBus {
         }
     }
 
-    /** Sends the event to every listener registered for its type. */
+    /**
+     * Delivers an event object to every listener currently subscribed to its runtime class.
+     *
+     * @param event the event instance to publish
+     */
     @SuppressWarnings("unchecked")
     public void publish(Object event) {
         List<Consumer<?>> list = listeners.get(event.getClass());

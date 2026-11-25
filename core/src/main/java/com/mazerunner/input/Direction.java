@@ -6,9 +6,16 @@ package com.mazerunner.input;
  * @author Ali Hasanov
  */
 public enum Direction {
+    /** Moves one cell upward ({@code y + 1}). */
     UP(0, 1),
+
+    /** Moves one cell downward ({@code y - 1}). */
     DOWN(0, -1),
+
+    /** Moves one cell left ({@code x - 1}). */
     LEFT(-1, 0),
+
+    /** Moves one cell right ({@code x + 1}). */
     RIGHT(1, 0);
 
     private final int dx;
@@ -19,12 +26,20 @@ public enum Direction {
         this.dy = dy;
     }
 
-    /** Returns the change in x for one step in this direction. */
+    /**
+     * Returns the horizontal cell offset for one step in this direction.
+     *
+     * @return change in x ({@code -1}, {@code 0}, or {@code 1})
+     */
     public int getDx() {
         return dx;
     }
 
-    /** Returns the change in y for one step in this direction. */
+    /**
+     * Returns the vertical cell offset for one step in this direction.
+     *
+     * @return change in y ({@code -1}, {@code 0}, or {@code 1})
+     */
     public int getDy() {
         return dy;
     }

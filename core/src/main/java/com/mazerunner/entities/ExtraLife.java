@@ -10,12 +10,24 @@ import com.mazerunner.events.GameEvent;
  */
 public final class ExtraLife extends GameObject implements Collectable {
 
-    /** Creates an extra-life pickup at (x, y). */
+    /**
+     * Creates an extra-life pickup at the given grid coordinates.
+     *
+     * @param x horizontal grid coordinate
+     * @param y vertical grid coordinate
+     */
     public ExtraLife(int x, int y) {
         super(x, y);
     }
 
-    /** Adds 1 life (+150 pts) or converts to +300 pts if the player already has 5 lives. */
+    /**
+     * Adds one life and awards 150 points, or awards 300 points if the player
+     * is already at {@link Player#MAX_LIVES}, then publishes an
+     * {@link GameEvent.ExtraLifeCollectedEvent}.
+     *
+     * @param world  the active game world
+     * @param player the player collecting the item
+     */
     @Override
     public void collect(GameWorld world, Player player) {
         boolean added = player.addLife();

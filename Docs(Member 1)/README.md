@@ -4,6 +4,17 @@ This folder documents every Java file in the core gameplay module (`core/src/mai
 
 ---
 
+## UML Class Diagrams (Text & Picture Versions)
+
+- **Picture (PNG):** [CoreGameplay_UML.png](CoreGameplay_UML.png)
+- **Vector Picture (SVG):** [CoreGameplay_UML.svg](CoreGameplay_UML.svg)
+- **Complete Text UML:** [CoreGameplay_UML.txt](CoreGameplay_UML.txt)
+- **PlantUML Source:** [CoreGameplay_UML.puml](CoreGameplay_UML.puml)
+
+![MazeRunner Core Gameplay UML Class Diagram](CoreGameplay_UML.png)
+
+---
+
 ## All Documented Java Files (25 Java Files Across 7 Packages + Tests)
 
 ### `com.mazerunner.core`

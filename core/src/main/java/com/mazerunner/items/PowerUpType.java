@@ -6,6 +6,9 @@ package com.mazerunner.items;
  * @author Ali Hasanov
  */
 public enum PowerUpType {
+    /** Temporarily multiplies the player's movement speed. */
     SPEED_BOOST,
+
+    /** Temporarily blocks hazard damage to the player. */
     SHIELD
 }

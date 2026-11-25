@@ -9,6 +9,11 @@ import com.mazerunner.core.GameWorld;
  */
 public interface Collectable {
 
-    /** Applies the item effect to the world and the player. */
+    /**
+     * Applies this item's pickup effect to the active game world and player.
+     *
+     * @param world  the active game world
+     * @param player the player collecting this item
+     */
     void collect(GameWorld world, Player player);
 }

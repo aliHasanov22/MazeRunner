@@ -7,6 +7,11 @@ package com.mazerunner.entities;
  */
 public interface Collidable {
 
-    /** Returns true if both objects are on the same grid cell. */
+    /**
+     * Checks whether this object occupies the same grid cell as another object.
+     *
+     * @param other the other game object to check against
+     * @return {@code true} if both objects are on the same grid cell
+     */
     boolean collidesWith(GameObject other);
 }

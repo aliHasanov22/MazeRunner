@@ -1,0 +1,542 @@
+====================================================================================================
+MAZERUNNER CORE GAMEPLAY (MEMBER 1) - COMPLETE TEXT UML CLASS DIAGRAM
+====================================================================================================
+Author  : Ali Hasanov (Member 1 - Core Gameplay)
+Scope   : core/src/main/java/com/mazerunner/ (24 files, 32 types) + CoreGameplaySelfTest (test)
+Rules   : Follows AZSET FoP UML conventions (Slides 15, 27, 36 & Session 1/4 OOP UML rules):
+          - 3 compartments per class: [1] Stereotype & Name, [2] Attributes, [3] Operations
+          - Visibility: + (public), # (protected), - (private)
+          - {static} marks static fields/methods; {final} marks constants
+          - Relationships:
+              --|>   Inheritance (extends)            [solid line + hollow triangle]
+              ..|>   Interface Realization (implements)[dashed line + hollow triangle]
+              *--    Composition (owns lifecycle)     [solid line + filled diamond]
+              o--    Aggregation (has-a reference)    [solid line + hollow diamond]
+              -->    Directed Association             [solid line + open arrow]
+              ..>    Dependency (uses / creates)      [dashed line + open arrow]
+              +--    Nested Type (enclosed in parent)
+
+====================================================================================================
+1. ASCII INHERITANCE & INTERFACE HIERARCHY (com.mazerunner.entities)
+====================================================================================================
+
+                         +-----------------------------------------+
+                         |             <<interface>>               |
+                         |               Collidable                |
+                         +-----------------------------------------+
+                         | + collidesWith(other: GameObject): bool |
+                         +-----------------------------------------+
+                                              ^
+                                              :  ..|> (implements)
+                                              |
+                         +-----------------------------------------+
+                         |              <<abstract>>               |
+                         |               GameObject                |
+                         +-----------------------------------------+
+                         | - {static} nextId : long = 1            |
+                         | - id : long                             |
+                         | - x : int                               |
+                         | - y : int                               |
+                         +-----------------------------------------+
+                         | # GameObject(x: int, y: int)            |
+                         | + getId() : long                        |
+                         | + getX() : int                          |
+                         | + getY() : int                          |
+                         | + getPosition() : GridPosition          |
+                         | # setPosition(newX: int, newY: int):void|
+                         | + blocksMovement(hasKey: bool) : bool   |
+                         | + update(deltaSeconds: float,           |
+                         |          world: GameWorld) : void       |
+                         | + collidesWith(other: GameObject): bool |
+                         +-----------------------------------------+
+                                              ^
+       +----------+----------+----------+-----+----+----------+----------+
+       |          |          |          |          |          |          |
+    +--|--+    +--|--+    +--|--+    +--|--+    +--|--+    +--|--+    +--|--+
+    |Wall |    |Free |    |Entry|    |Exit |    |Play-|    |Trap |    |Enemy|
+    |     |    |Path |    |     |    |     |    |er   |    |     |    |     |
+    +-----+    +-----+    +-----+    +-----+    +-----+    +--+--+    +--+--+
+                                                              :          :
+                                                              v ..|>     v ..|>
+                                                        +--------------------------+
+                                                        |      <<interface>>       |
+                                                        |         Damaging         |
+                                                        +--------------------------+
+                                                        | + getDamageAmount(): int |
+                                                        +--------------------------+
+
+    Collectable subclasses extending GameObject (--|>) and implementing Collectable (..|>):
+       +-------------+            +-------------+            +-------------+
+       |     Key     |            |  ExtraLife  |            |   PowerUp   |
+       +------+------+            +------+------+            +------+------+
+              :                          :                          :
+              +--------------------------+--------------------------+
+                                         : ..|>
+                                         v
+                    +--------------------------------------------------+
+                    |                  <<interface>>                   |
+                    |                   Collectable                    |
+                    +--------------------------------------------------+
+                    | + collect(world: GameWorld, player: Player):void |
+                    +--------------------------------------------------+
+
+====================================================================================================
+2. ASCII CORE ARCHITECTURE & COMPOSITION DIAGRAM
+====================================================================================================
+
+  +------------------------------------------------------------------------------+
+  |                                  GameWorld                                   |
+  |------------------------------------------------------------------------------|
+  |  *-- 1 Player                   o-- 1 GridMap             --> 1 GameState    |
+  |  *-- 1 CollisionResolver        o-- 0..* Collectable                         |
+  |  *-- 1 EventBus                                                              |
+  +------------------------------------------------------------------------------+
+         |                                 |                         |
+         | uses                            | holds                   | publishes
+         v                                 v                         v
+  +----------------------+       +--------------------+     +--------------------+
+  |  CollisionResolver   |       |      GridMap       |     |      EventBus      |
+  +----------------------+       +--------------------+     +--------------------+
+  | - cooldownRemaining  |       | *-- GameObject[][] |     | - listeners : Map  |
+  | - touchingHazards    |       | o-- List<Enemy>    |     | ..> GameEvent (x8) |
+  +----------------------+       +--------------------+     +--------------------+
+                                           ^
+                                           : creates tiles/enemies (0..5)
+                                 +--------------------+
+                                 |   ObjectFactory    |
+                                 +--------------------+
+
+====================================================================================================
+3. EVERY CLASS, ATTRIBUTE, AND METHOD BY PACKAGE (32 PRODUCTION TYPES + 1 TEST CLASS)
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 1: com.mazerunner.core
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| <<enum>> GameState                                                                               |
++--------------------------------------------------------------------------------------------------+
+| RUNNING                                                                                          |
+| PAUSED                                                                                           |
+| VICTORY                                                                                          |
+| GAME_OVER                                                                                        |
+| MENU                                                                                             |
++--------------------------------------------------------------------------------------------------+
+| (no methods)                                                                                     |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| GameWorld                                                                                        |
++--------------------------------------------------------------------------------------------------+
+| - {static} VICTORY_SCORE : int = 500                                                             |
+| - {static} POINTS_PER_LIFE : int = 100                                                           |
+| - {static} MAX_TIME_BONUS : int = 600                                                            |
+| - {static} POINTS_PER_SECOND : int = 5                                                           |
+| - map : GridMap                                                                                  |
+| - player : Player                                                                                |
+| - eventBus : EventBus                                                                            |
+| - collisionResolver : CollisionResolver                                                          |
+| - collectables : List<GameObject>                                                                |
+| - startingCollectables : List<GameObject>                                                        |
+| - state : GameState = GameState.RUNNING                                                          |
+| - score : int                                                                                    |
+| - elapsedSeconds : float                                                                         |
++--------------------------------------------------------------------------------------------------+
+| + GameWorld(map : GridMap)                                                                       |
+| + getMap() : GridMap                                                                             |
+| + getPlayer() : Player                                                                           |
+| + getEventBus() : EventBus                                                                       |
+| + getState() : GameState                                                                         |
+| + getScore() : int                                                                               |
+| + getElapsedSeconds() : float                                                                    |
+| + getCollectables() : List<GameObject>                                                           |
+| + addCollectable(item : GameObject) : void                                                       |
+| + removeCollectable(item : GameObject) : void                                                    |
+| + setMovement(direction : Direction, sprint : boolean) : void                                    |
+| + pause() : void                                                                                 |
+| + resume() : void                                                                                |
+| + returnToMenu() : void                                                                          |
+| + resetForNewGame() : void                                                                       |
+| + tick(deltaSeconds : float) : void                                                              |
+| + canPlayerEnter(position : GridPosition) : boolean                                              |
+| + canEnemyEnter(position : GridPosition, movingEnemy : Enemy) : boolean                          |
+| + addScore(points : int, reason : String) : void                                                 |
+| + damagePlayer(hazard : Damaging, position : GridPosition, sourceName : String) : void           |
+| + finishVictory() : void                                                                         |
++--------------------------------------------------------------------------------------------------+
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 2: com.mazerunner.collision
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| CollisionResolver                                                                                |
++--------------------------------------------------------------------------------------------------+
+| + {static} HIT_COOLDOWN_SECONDS : float = 1.0f                                                   |
+| - cooldownRemaining : float                                                                      |
+| - touchingHazards : Set<Long>                                                                    |
++--------------------------------------------------------------------------------------------------+
+| + update(deltaSeconds : float) : void                                                            |
+| + resolve(world : GameWorld) : void                                                              |
+| + reset() : void                                                                                 |
+| + getCooldownRemaining() : float                                                                 |
++--------------------------------------------------------------------------------------------------+
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 3: com.mazerunner.entities
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| <<interface>> Collidable                                                                         |
++--------------------------------------------------------------------------------------------------+
+| (no attributes)                                                                                  |
++--------------------------------------------------------------------------------------------------+
+| + collidesWith(other : GameObject) : boolean                                                     |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| <<interface>> Damaging                                                                           |
++--------------------------------------------------------------------------------------------------+
+| (no attributes)                                                                                  |
++--------------------------------------------------------------------------------------------------+
+| + getDamageAmount() : int                                                                        |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| <<interface>> Collectable                                                                        |
++--------------------------------------------------------------------------------------------------+
+| (no attributes)                                                                                  |
++--------------------------------------------------------------------------------------------------+
+| + collect(world : GameWorld, player : Player) : void                                             |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| <<abstract>> GameObject  (..|> Collidable)                                                       |
++--------------------------------------------------------------------------------------------------+
+| - {static} nextId : long = 1                                                                     |
+| - id : long                                                                                      |
+| - x : int                                                                                        |
+| - y : int                                                                                        |
++--------------------------------------------------------------------------------------------------+
+| # GameObject(x : int, y : int)                                                                   |
+| + getId() : long                                                                                 |
+| + getX() : int                                                                                   |
+| + getY() : int                                                                                   |
+| + getPosition() : GridPosition                                                                   |
+| # setPosition(newX : int, newY : int) : void                                                     |
+| + blocksMovement(hasKey : boolean) : boolean                                                     |
+| + update(deltaSeconds : float, world : GameWorld) : void                                         |
+| + collidesWith(other : GameObject) : boolean                                                     |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| Player  (--|> GameObject)                                                                        |
++--------------------------------------------------------------------------------------------------+
+| + {static} DEFAULT_LIVES : int = 3                                                               |
+| + {static} MAX_LIVES : int = 5                                                                   |
+| + {static} NORMAL_SPEED : float = 4.0f                                                           |
+| + {static} SPRINT_SPEED : float = 7.0f                                                           |
+| + {static} SPEED_BOOST_MULTIPLIER : float = 1.5f                                                 |
+| - lives : int                                                                                    |
+| - keyCount : int                                                                                 |
+| - direction : Direction                                                                          |
+| - sprinting : boolean                                                                            |
+| - movementProgress : float                                                                       |
+| - speedBoostTime : float                                                                         |
+| - shieldTime : float                                                                             |
++--------------------------------------------------------------------------------------------------+
+| + Player(x : int, y : int, lives : int)                                                          |
+| + getLives() : int                                                                               |
+| + getKeyCount() : int                                                                            |
+| + hasKey() : boolean                                                                             |
+| + hasShield() : boolean                                                                          |
+| + getShieldTime() : float                                                                        |
+| + getSpeedBoostTime() : float                                                                    |
+| + getDirection() : Direction                                                                     |
+| + setMovement(direction : Direction, sprint : boolean) : void                                    |
+| + addMovementTime(deltaSeconds : float) : void                                                   |
+| + canMoveOneCell() : boolean                                                                     |
+| + stepTo(position : GridPosition) : void                                                         |
+| + clearMovementTime() : void                                                                     |
+| + loseLives(amount : int) : int                                                                  |
+| + addLife() : boolean                                                                            |
+| + addKey() : void                                                                                |
+| + activateSpeedBoost(seconds : float) : void                                                     |
+| + activateShield(seconds : float) : void                                                         |
+| + updateEffects(deltaSeconds : float) : void                                                     |
+| + resetForNewGame(startX : int, startY : int, startingLives : int) : void                        |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| Enemy  (--|> GameObject, ..|> Damaging)                                                          |
++--------------------------------------------------------------------------------------------------+
+| - {static} SECONDS_PER_STEP : float = 0.8f                                                       |
+| - {static} PATROL : Direction[] = {RIGHT, DOWN, LEFT, UP}                                        |
+| - startX : int                                                                                   |
+| - startY : int                                                                                   |
+| - timer : float                                                                                  |
+| - directionIndex : int                                                                           |
++--------------------------------------------------------------------------------------------------+
+| + Enemy(x : int, y : int)                                                                        |
+| + getDamageAmount() : int                                                                        |
+| + update(deltaSeconds : float, world : GameWorld) : void                                         |
+| + resetForNewGame() : void                                                                       |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| Wall  (--|> GameObject)                                                                          |
++--------------------------------------------------------------------------------------------------+
+| (inherits id, x, y from GameObject)                                                              |
++--------------------------------------------------------------------------------------------------+
+| + Wall(x : int, y : int)                                                                         |
+| + blocksMovement(hasKey : boolean) : boolean                                                     |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| FreePath  (--|> GameObject)                                                                      |
++--------------------------------------------------------------------------------------------------+
+| (inherits id, x, y from GameObject)                                                              |
++--------------------------------------------------------------------------------------------------+
+| + FreePath(x : int, y : int)                                                                     |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| Entry  (--|> GameObject)                                                                         |
++--------------------------------------------------------------------------------------------------+
+| (inherits id, x, y from GameObject)                                                              |
++--------------------------------------------------------------------------------------------------+
+| + Entry(x : int, y : int)                                                                        |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| Exit  (--|> GameObject)                                                                          |
++--------------------------------------------------------------------------------------------------+
+| (inherits id, x, y from GameObject)                                                              |
++--------------------------------------------------------------------------------------------------+
+| + Exit(x : int, y : int)                                                                         |
+| + blocksMovement(hasKey : boolean) : boolean                                                     |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| Trap  (--|> GameObject, ..|> Damaging)                                                           |
++--------------------------------------------------------------------------------------------------+
+| (inherits id, x, y from GameObject)                                                              |
++--------------------------------------------------------------------------------------------------+
+| + Trap(x : int, y : int)                                                                         |
+| + getDamageAmount() : int                                                                        |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| Key  (--|> GameObject, ..|> Collectable)                                                         |
++--------------------------------------------------------------------------------------------------+
+| (inherits id, x, y from GameObject)                                                              |
++--------------------------------------------------------------------------------------------------+
+| + Key(x : int, y : int)                                                                          |
+| + collect(world : GameWorld, player : Player) : void                                             |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| ExtraLife  (--|> GameObject, ..|> Collectable)                                                   |
++--------------------------------------------------------------------------------------------------+
+| (inherits id, x, y from GameObject)                                                              |
++--------------------------------------------------------------------------------------------------+
+| + ExtraLife(x : int, y : int)                                                                    |
+| + collect(world : GameWorld, player : Player) : void                                             |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| PowerUp  (--|> GameObject, ..|> Collectable)                                                     |
++--------------------------------------------------------------------------------------------------+
+| - type : PowerUpType                                                                             |
+| - durationSeconds : float                                                                        |
++--------------------------------------------------------------------------------------------------+
+| + PowerUp(x : int, y : int, type : PowerUpType, durationSeconds : float)                         |
+| + getType() : PowerUpType                                                                        |
+| + getDurationSeconds() : float                                                                   |
+| + collect(world : GameWorld, player : Player) : void                                             |
++--------------------------------------------------------------------------------------------------+
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 4: com.mazerunner.map
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| <<record>> GridPosition                                                                          |
++--------------------------------------------------------------------------------------------------+
+| - x : int                                                                                        |
+| - y : int                                                                                        |
++--------------------------------------------------------------------------------------------------+
+| + GridPosition(x : int, y : int)                                                                 |
+| + x() : int                                                                                      |
+| + y() : int                                                                                      |
+| + move(direction : Direction) : GridPosition                                                     |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| GridMap                                                                                          |
++--------------------------------------------------------------------------------------------------+
+| - width : int                                                                                    |
+| - height : int                                                                                   |
+| - cells : GameObject[][]                                                                         |
+| - enemies : List<Enemy>                                                                          |
++--------------------------------------------------------------------------------------------------+
+| + GridMap(width : int, height : int)                                                             |
+| + getWidth() : int                                                                               |
+| + getHeight() : int                                                                              |
+| + isInside(x : int, y : int) : boolean                                                           |
+| + getTileAt(x : int, y : int) : GameObject                                                       |
+| + setTile(object : GameObject) : void                                                            |
+| + getEnemies() : List<Enemy>                                                                     |
+| + findEntry() : Entry                                                                            |
+| + findNearestExit(from : GridPosition) : Exit                                                    |
+| + resetEnemies() : void                                                                          |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| ObjectFactory                                                                                    |
++--------------------------------------------------------------------------------------------------+
+| + {static} FREE_PATH_ID : int = 0                                                                |
+| + {static} WALL_ID : int = 1                                                                     |
+| + {static} ENTRY_ID : int = 2                                                                    |
+| + {static} EXIT_ID : int = 3                                                                     |
+| + {static} TRAP_ID : int = 4                                                                     |
+| + {static} ENEMY_ID : int = 5                                                                    |
++--------------------------------------------------------------------------------------------------+
+| + create(typeId : int, x : int, y : int) : GameObject                                            |
++--------------------------------------------------------------------------------------------------+
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 5: com.mazerunner.events
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| EventBus                                                                                         |
++--------------------------------------------------------------------------------------------------+
+| - listeners : Map<Class<?>, List<Consumer<?>>>                                                   |
++--------------------------------------------------------------------------------------------------+
+| + <E> subscribe(eventType : Class<E>, listener : Consumer<E>) : void                             |
+| + <E> unsubscribe(eventType : Class<E>, listener : Consumer<E>) : void                           |
+| + publish(event : Object) : void                                                                 |
++--------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------+
+| <<interface>> GameEvent                                                                          |
++--------------------------------------------------------------------------------------------------+
+| Nested <<record>> implementations inside GameEvent (all ..|> GameEvent):                         |
+|                                                                                                  |
+|  1. LifeLostEvent                                                                                |
+|     - source : String, - position : GridPosition, - livesRemaining : int, - livesLost : int      |
+|     + source() : String, + position() : GridPosition, + livesRemaining() : int, + livesLost():int|
+|                                                                                                  |
+|  2. KeyCollectedEvent                                                                            |
+|     - position : GridPosition, - totalKeys : int                                                 |
+|     + position() : GridPosition, + totalKeys() : int                                             |
+|                                                                                                  |
+|  3. ScoreChangedEvent                                                                            |
+|     - newScore : int, - pointsAdded : int, - reason : String                                     |
+|     + newScore() : int, + pointsAdded() : int, + reason() : String                               |
+|                                                                                                  |
+|  4. ExtraLifeCollectedEvent                                                                      |
+|     - livesNow : int, - lifeWasAdded : boolean                                                   |
+|     + livesNow() : int, + lifeWasAdded() : boolean                                               |
+|                                                                                                  |
+|  5. PowerUpCollectedEvent                                                                        |
+|     - type : PowerUpType, - durationSeconds : float                                              |
+|     + type() : PowerUpType, + durationSeconds() : float                                          |
+|                                                                                                  |
+|  6. VictoryEvent                                                                                 |
+|     - finalScore : int, - completionTimeSeconds : float, - livesRemaining : int                  |
+|     + finalScore() : int, + completionTimeSeconds() : float, + livesRemaining() : int            |
+|                                                                                                  |
+|  7. GameOverEvent                                                                                |
+|     - finalScore : int                                                                           |
+|     + finalScore() : int                                                                         |
+|                                                                                                  |
+|  8. NewGameStartedEvent                                                                          |
+|     (no fields)                                                                                  |
++--------------------------------------------------------------------------------------------------+
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 6: com.mazerunner.input
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| <<enum>> Direction                                                                               |
++--------------------------------------------------------------------------------------------------+
+| UP(0, 1)                                                                                         |
+| DOWN(0, -1)                                                                                      |
+| LEFT(-1, 0)                                                                                      |
+| RIGHT(1, 0)                                                                                      |
+| - dx : int                                                                                       |
+| - dy : int                                                                                       |
++--------------------------------------------------------------------------------------------------+
+| - Direction(dx : int, dy : int)                                                                  |
+| + getDx() : int                                                                                  |
+| + getDy() : int                                                                                  |
++--------------------------------------------------------------------------------------------------+
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 7: com.mazerunner.items
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| <<enum>> PowerUpType                                                                             |
++--------------------------------------------------------------------------------------------------+
+| SPEED_BOOST                                                                                      |
+| SHIELD                                                                                           |
++--------------------------------------------------------------------------------------------------+
+| (no methods)                                                                                     |
++--------------------------------------------------------------------------------------------------+
+
+----------------------------------------------------------------------------------------------------
+PACKAGE 8 (TEST): com.mazerunner
+----------------------------------------------------------------------------------------------------
+
++--------------------------------------------------------------------------------------------------+
+| CoreGameplaySelfTest                                                                             |
++--------------------------------------------------------------------------------------------------+
+| - {static} eventCalls : int = 0                                                                  |
++--------------------------------------------------------------------------------------------------+
+| + {static} main(args : String[]) : void                                                          |
+| - {static} stepOffAndBack(world : GameWorld) : void                                              |
+| - {static} basicMap() : GridMap                                                                  |
+| - {static} check(condition : boolean, message : String) : void                                   |
++--------------------------------------------------------------------------------------------------+
+
+====================================================================================================
+4. COMPLETE UML RELATIONSHIPS TABLE
+====================================================================================================
+Source                   | UML  | Target                   | Multiplicity | Meaning
+-------------------------+------+--------------------------+--------------+-------------------------
+GameObject               | ..|> | Collidable               | -            | Implements collision
+Player, Enemy, Wall,     | --|> | GameObject               | -            | Extends base GameObject
+FreePath, Entry, Exit,   |      |                          |              |
+Trap, Key, ExtraLife,    |      |                          |              |
+PowerUp                  |      |                          |              |
+Trap, Enemy              | ..|> | Damaging                 | -            | Implements Damaging
+Key, ExtraLife, PowerUp  | ..|> | Collectable              | -            | Implements Collectable
+8 *Event records         | ..|> | GameEvent                | -            | Implements GameEvent
+GameEvent                | +--  | 8 *Event records         | -            | Nested inside GameEvent
+GameWorld                | *--  | Player                   | 1 : 1        | Creates & owns Player
+GameWorld                | *--  | CollisionResolver        | 1 : 1        | Creates & owns Resolver
+GameWorld                | *--  | EventBus                 | 1 : 1        | Creates & owns EventBus
+GameWorld                | o--  | GridMap                  | 1 : 1        | Uses passed-in GridMap
+GameWorld                | o--  | Collectable              | 1 : 0..*     | Holds map collectables
+GameWorld                | -->  | GameState                | 1 : 1        | Current game state
+GridMap                  | *--  | GameObject               | 1 : 1..*     | 2D terrain cells[][]
+GridMap                  | o--  | Enemy                    | 1 : 0..*     | Moving enemies list
+Player                   | -->  | Direction                | * : 0..1     | Held movement direction
+Enemy                    | -->  | Direction                | * : 4        | PATROL direction array
+PowerUp                  | -->  | PowerUpType              | * : 1        | Power-up effect type
+PowerUpCollectedEvent    | -->  | PowerUpType              | * : 1        | Collected power-up type
+LifeLostEvent            | -->  | GridPosition             | * : 1        | Damage cell coordinate
+KeyCollectedEvent        | -->  | GridPosition             | * : 1        | Key cell coordinate
+ObjectFactory            | ..>  | FreePath, Wall, Entry,   | -            | Instantiates IDs 0..5
+                         |      | Exit, Trap, Enemy        |              |
+CollisionResolver        | ..>  | GameWorld, Damaging,     | -            | Resolves cell contacts
+                         |      | Collectable, Exit        |              |
+GameObject               | ..>  | GridPosition             | -            | Creates GridPosition
+GridPosition             | ..>  | Direction                | -            | Computes moved position
+EventBus                 | ..>  | GameEvent                | -            | Publishes event records
+====================================================================================================

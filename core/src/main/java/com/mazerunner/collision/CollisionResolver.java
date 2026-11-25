@@ -23,17 +23,29 @@ import com.mazerunner.entities.Player;
  */
 public final class CollisionResolver {
 
+    /** Cooldown duration in seconds after the player takes a hit. */
     public static final float HIT_COOLDOWN_SECONDS = 1.0f;
 
     private float cooldownRemaining;
     private final Set<Long> touchingHazards = new HashSet<>();
 
-    /** Counts down the hit cooldown. */
+    /**
+     * Counts down the remaining hit cooldown timer each frame.
+     *
+     * @param deltaSeconds time passed since the last frame in seconds
+     */
     public void update(float deltaSeconds) {
         cooldownRemaining = Math.max(0, cooldownRemaining - deltaSeconds);
     }
 
-    /** Handles all collisions on the player's current cell. */
+    /**
+     * Checks and handles all collisions on the player's current grid cell:
+     * picks up collectables, applies damage on newly entered hazards when the
+     * cooldown has expired, and triggers victory on an unlocked exit.
+     * Does nothing if the game is not in {@link GameState#RUNNING}.
+     *
+     * @param world the active game world to resolve collisions for
+     */
     public void resolve(GameWorld world) {
         if (world.getState() != GameState.RUNNING) {
             return;
@@ -83,13 +95,21 @@ public final class CollisionResolver {
         }
     }
 
-    /** Clears the cooldown and contacts for a new game. */
+    /**
+     * Resets the hit cooldown to zero and clears all tracked hazard contacts
+     * when starting a new game.
+     */
     public void reset() {
         cooldownRemaining = 0;
         touchingHazards.clear();
     }
 
-    /** Returns the remaining cooldown in seconds. */
+    /**
+     * Returns how much hit cooldown time is left before another hazard contact
+     * can damage the player.
+     *
+     * @return remaining cooldown time in seconds
+     */
     public float getCooldownRemaining() {
         return cooldownRemaining;
     }

@@ -7,6 +7,10 @@ package com.mazerunner.entities;
  */
 public interface Damaging {
 
-    /** Returns how many lives are lost from one hit. */
+    /**
+     * Returns the number of lives removed from the player by one logical hit.
+     *
+     * @return lives removed per hit
+     */
     int getDamageAmount();
 }
