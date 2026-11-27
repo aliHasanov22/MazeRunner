@@ -29,7 +29,7 @@ public final class Player extends GameObject {
     private int keyCount;
     private Direction direction;
     private boolean sprinting;
-    private float movementProgress;
+    private float movementProgress = 1.0f; // starts at 1 so the player can move immediately : fix
     private float speedBoostTime;
     private float shieldTime;
 
@@ -118,9 +118,9 @@ public final class Player extends GameObject {
     public void setMovement(Direction direction, boolean sprint) {
         this.direction = direction;
         this.sprinting = sprint && direction != null;
-        if (direction == null) {
-            movementProgress = 0;
-        }
+        /* if (direction == null) {
+            movementProgress = 0; : fix
+        } */ 
     }
 
     /**
@@ -131,6 +131,7 @@ public final class Player extends GameObject {
      */
     public void addMovementTime(float deltaSeconds) {
         if (direction == null) {
+            movementProgress = Math.min(1.0f, movementProgress + deltaSeconds * NORMAL_SPEED); // allow progress to accumulate while stationary
             return;
         }
         float speed = sprinting ? SPRINT_SPEED : NORMAL_SPEED;
@@ -146,7 +147,7 @@ public final class Player extends GameObject {
      * @return {@code true} if a direction is held and {@code movementProgress >= 1}
      */
     public boolean canMoveOneCell() {
-        return direction != null && movementProgress >= 1;
+        return direction != null && movementProgress > 1.0f; // movement fix
     }
 
     /**
@@ -163,7 +164,7 @@ public final class Player extends GameObject {
      * Clears leftover movement progress when movement is blocked by a wall or locked exit.
      */
     public void clearMovementTime() {
-        movementProgress = 0;
+        movementProgress = 1.0f; // movement lag fix : player can move immediatly 
     }
 
     /**
